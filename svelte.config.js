@@ -1,11 +1,11 @@
 import { mdsvex } from 'mdsvex';
 import adapterAuto from '@sveltejs/adapter-auto';
 
-const isGitHubActions = Boolean(process.env.GITHUB_ACTIONS);
+const isGitHubPagesBuild = process.env.GITHUB_PAGES === 'true';
 const repoName = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? 'coding_cafe';
 let adapter = adapterAuto();
 
-if (isGitHubActions) {
+if (isGitHubPagesBuild) {
 	const { default: adapterStatic } = await import('@sveltejs/adapter-static');
 	adapter = adapterStatic({
 		pages: 'build',
@@ -21,7 +21,7 @@ const config = {
 	kit: {
 		adapter,
 		paths: {
-			base: isGitHubActions ? `/${repoName}` : ''
+			base: isGitHubPagesBuild ? `/${repoName}` : ''
 		},
 		prerender: {
 			entries: ['*']
