@@ -1,42 +1,69 @@
-# sv
+# LUMC Coding Cafe Web
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit implementation of the LUMC Research Software Training Portal
 
-## Creating a project
+## Tech stack
 
-If you're seeing this, you've probably already done this step. Congrats!
+- SvelteKit (TypeScript)
+- Tailwind CSS (base import present)
+- Adapter Auto
 
-```sh
-# create a new project
-npx sv create my-app
-```
+## Implemented routes
 
-To recreate this project with the same configuration:
+- `/` Home
+- `/training` Training Catalogue (search + level filter)
+- `/cafe` Coding Cafe
+- `/resources` Resource Library
+- `/calendar` Training Calendar
+- `/about` About the Program
+- `/contact` Contact form
 
-```sh
-# recreate this project
-npx sv create --template minimal --types ts --add prettier tailwindcss="plugins:typography" sveltekit-adapter="adapter:auto" mdsvex --install npm coding_cafe_web
-```
+## Project structure
 
-## Developing
+- `src/routes/+layout.svelte`: shared header/footer layout
+- `src/routes/+page.svelte`: homepage
+- `src/routes/<route>/+page.svelte`: page routes
+- `src/lib/data.ts`: shared training/event/resource/team data
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Local development
 
-```sh
+```bash
+npm install
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+Run checks:
 
-To create a production version of your app:
+```bash
+npm run check
+```
 
-```sh
+## Build
+
+```bash
 npm run build
+npm run preview
 ```
 
-You can preview the production build with `npm run preview`.
+## GitHub push (this repo)
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Current remote:
+
+```bash
+git remote -v
+# origin git@github.com:LUMC-DCC/coding_cafe.git
+```
+
+If SSH is configured:
+
+```bash
+ssh -T git@github.com
+git push -u origin main
+```
+
+If SSH key auth is not configured, switch to HTTPS:
+
+```bash
+git remote set-url origin https://github.com/LUMC-DCC/coding_cafe.git
+git push -u origin main
+```
