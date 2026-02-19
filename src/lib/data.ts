@@ -1,3 +1,5 @@
+import { codingCafeEvents } from '$lib/coding-cafe-events';
+
 export type DifficultyLevel = 'Beginner' | 'Intermediate' | 'Advanced';
 
 export type Training = {
@@ -94,16 +96,6 @@ export const trainings: Training[] = [
 
 export const events: EventItem[] = [
 	{
-		id: 'e1',
-		type: 'cafe',
-		title: 'Coding Cafe: AI-assisted coding',
-		date: getDate(14, 16),
-		location: 'LUMC Library, Room 3',
-		speaker: 'Dr. A. Turing',
-		description: 'Discussing the pros and cons of using Copilot and ChatGPT in research code.',
-		registrationLink: '#'
-	},
-	{
 		id: 'e2',
 		type: 'training',
 		title: 'Introduction to R - Cohort A',
@@ -111,16 +103,6 @@ export const events: EventItem[] = [
 		location: 'Building 1, Room J-01',
 		description: 'The first session of our popular R course.',
 		relatedTrainingId: 't1',
-		registrationLink: '#'
-	},
-	{
-		id: 'e3',
-		type: 'cafe',
-		title: 'Coding Cafe: Visualizing Genomics',
-		date: getDate(28, 16),
-		location: 'Online (Teams)',
-		speaker: 'J. Doe, PhD',
-		description: 'A showcase of new libraries for interactive genomic plots.',
 		registrationLink: '#'
 	},
 	{
@@ -142,15 +124,7 @@ export const events: EventItem[] = [
 		description: 'Start scripting with Python.',
 		registrationLink: '#'
 	},
-	{
-		id: 'e6',
-		type: 'cafe',
-		title: 'Coding Cafe: Bring your own Bug',
-		date: getDate(45, 16),
-		location: 'LUMC Library',
-		description: 'Open session for troubleshooting.',
-		registrationLink: '#'
-	}
+	...codingCafeEvents
 ];
 
 export const resources: Resource[] = [
