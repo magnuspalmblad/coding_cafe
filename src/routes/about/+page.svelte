@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { team } from '$lib/data';
+	import { base } from '$app/paths';
+
+	const withBase = (path: string) => (path.startsWith('http') ? path : `${base}${path}`);
 </script>
 
 <div class="wrap">
@@ -34,7 +37,11 @@
 			{#each team as member (member.name)}
 				<div class="member">
 					{#if member.image}
-						<img class="avatar-image" src={member.image} alt={`${member.name} placeholder portrait`} />
+						<img
+							class="avatar-image"
+							src={withBase(member.image)}
+							alt={`${member.name} placeholder portrait`}
+						/>
 					{:else}
 						<div class="avatar">{member.name.charAt(0)}</div>
 					{/if}
