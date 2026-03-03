@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { trainings, type DifficultyLevel } from '$lib/data';
 
 	let searchTerm = $state('');
@@ -61,6 +62,8 @@
 			)
 			.join(', ');
 	};
+
+	const withBase = (path: string) => `${base}${path}`;
 </script>
 
 <div class="wrap">
@@ -71,6 +74,35 @@
 				Check this page for internal and external training opportunities across the region, from basic
 				scripting to advanced reproducible workflows.
 			</p>
+			<div class="external-events">
+				<span>Looking for more events?</span>
+				<div class="external-buttons">
+					<a
+						class="external-button"
+						href="https://tess.elixir-europe.org/events"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						<img src={withBase('/images/tess-logo.svg')} alt="TeSS logo" />
+						<span class="external-copy">
+							<strong>TeSS</strong>
+							<small>ELIXIR's Europe-wide catalogue for training and events.</small>
+						</span>
+					</a>
+					<a
+						class="external-button"
+						href="https://taxila.nl/events?per_page=50#home"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
+						<img src={withBase('/images/taxila-logo.svg')} alt="Taxila logo" />
+						<span class="external-copy">
+							<strong>Taxila</strong>
+							<small>Collection of trainers, events, and materials empowering research.</small>
+						</span>
+					</a>
+				</div>
+			</div>
 		</div>
 	</div>
 
@@ -215,6 +247,56 @@
 		max-width: 42rem;
 		color: #475569;
 		font-size: 1.08rem;
+	}
+	.external-events {
+		margin-top: 1rem;
+		display: grid;
+		gap: 0.65rem;
+		font-size: 0.9rem;
+		color: #334155;
+	}
+	.external-buttons {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+	.external-button {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.8rem 1rem;
+		border-radius: 0.7rem;
+		border: 1px solid #bfdbfe;
+		background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);
+		color: #0f172a;
+		text-decoration: none;
+		font-size: 0.86rem;
+		font-weight: 700;
+		box-shadow: 0 6px 14px rgb(15 23 42 / 0.08);
+		min-width: 18rem;
+	}
+	.external-button img {
+		width: 2.2rem;
+		height: 2.2rem;
+		object-fit: contain;
+		flex-shrink: 0;
+	}
+	.external-copy {
+		display: grid;
+		line-height: 1.2;
+	}
+	.external-copy strong {
+		font-size: 0.92rem;
+		color: #0f172a;
+	}
+	.external-copy small {
+		font-size: 0.72rem;
+		color: #475569;
+	}
+	.external-button:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 10px 20px rgb(15 23 42 / 0.12);
+		border-color: #93c5fd;
 	}
 	.section {
 		padding-top: 2rem;
