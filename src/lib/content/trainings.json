@@ -1,70 +1,126 @@
 [
   {
     "id": "t1",
-    "title": "Introduction to R for Medical Research",
-    "description": "A foundational course covering R syntax, data manipulation with dplyr, and basic visualization.",
+    "title": "Practical Linux",
+    "description": "After completing this short, half day, course attendees will be able to swiftly start using Linux both on a server as well as on their personal computer. There are no prerequisites, but the Linux course is mandatory for the courses: Shark, Code management with Git, Scripting for life science researcher, and Python programming.",
+    "organizer": "Medical Genetics Centre, LUMC",
     "level": "Beginner",
     "audience": ["PhD Candidates", "Researchers"],
-    "duration": "4 sessions (12 hours)",
+    "duration": "1 session (4 hours)",
     "format": "In-person",
-    "learningOutcomes": ["Master R syntax", "Clean datasets", "Create plots with ggplot2"],
-    "tags": ["R", "Data Analysis", "Statistics"],
-    "materialsLink": "https://github.com/lumc/intro-r",
+    "tags": ["Linux"],
+    "registrationLink": "https://www.medgencentre.com/MGC-courses/",
+    "materialsLink": "https://git.lumc.nl/courses/practical-linux-course/",
     "sessions": [
       {
         "id": "e2",
-        "title": "Introduction to R - Cohort A",
-        "date": "2026-03-03",
-        "time": "09:00-12:00",
-        "location": "Building 1, Room J-01",
-        "description": "The first session of our popular R course.",
-        "registrationLink": "#"
+        "title": "Practical Linux",
+        "date": "2026-03-11",
+        "time": "10:00-14:00",
+        "location": "LUMC, room J-01-082 (route 555) (to be confirmed)",
+        "description": ""
       }
     ]
   },
   {
     "id": "t2",
-    "title": "Version Control with Git",
-    "description": "Learn how to manage your code history, collaborate with others, and publish your work.",
+    "title": "Code management with Git",
+    "description": "This course aims at everyone who works in the Bioinformatics field. We cover a version control system named Git. This system is widely used by software developers but can also be used for project management. By keeping track of all versions, history, etc. collaboration with colleagues is easy and your analysis will be reproducible. Knowledge of Linux is required to follow this course.",
+    "organizer": "Medical Genetics Centre, LUMC",
     "level": "Intermediate",
     "audience": ["All Staff"],
     "duration": "1 day",
-    "format": "Hybrid",
-    "learningOutcomes": ["Init repositories", "Branching & Merging", "Resolving conflicts"],
-    "tags": ["Git", "Reproducibility"],
+    "format": "In-person",
+    "tags": ["Git", "Version Control"],
+    "registrationLink": "https://www.medgencentre.com/MGC-courses/",
     "materialsLink": "https://github.com/lumc/git-course",
     "sessions": [
       {
         "id": "e4",
-        "title": "Advanced Git Workshop",
-        "date": "2026-03-11",
-        "time": "13:00-16:00",
-        "location": "Online",
-        "description": "Deep dive into git rebase and submodules.",
-        "registrationLink": "#"
+        "title": "Code management with Git",
+        "date": "2026-03-17",
+        "time": "10:00-16:00",
+        "location": "LUMC, room J-01-082 (route 555) (to be confirmed)",
+        "description": ""
       }
     ]
   },
   {
     "id": "t3",
-    "title": "Reproducible Workflows with Snakemake",
-    "description": "Build scalable and reproducible data analysis pipelines.",
-    "level": "Advanced",
-    "audience": ["Bioinformaticians", "Data Stewards"],
-    "duration": "2 days",
-    "format": "Online",
-    "learningOutcomes": ["Pipeline design", "Conda environments", "Cluster execution"],
-    "tags": ["Python", "Workflow", "HPC"],
+    "title": "Python Programming",
+    "description": "The course is targeted at PhD students, postdocs, or anyone willing to learn how to program in Python. Participants are assumed to have some experience with programming, but not necessarily in Python, and the UNIX shell. For this reason it is mandatory to follow the Practical Linux and Code management with git courses before.",
+    "organizer": "Medical Genetics Centre, LUMC",
+    "level": "Beginner",
+    "audience": ["Phd", "Postdocs"],
+    "duration": "4 days",
+    "format": "In-person",
+    "tags": ["Python"],
+    "registrationLink": "https://www.medgencentre.com/MGC-courses/",
     "sessions": [
       {
         "id": "e5",
-        "title": "Python for Beginners",
-        "date": "2026-03-21",
+        "title": "Python Programming - Day 1",
+        "date": "2026-06-15",
         "time": "09:00-12:00",
-        "location": "Building 2, Room V-05",
-        "description": "Start scripting with Python.",
-        "registrationLink": "#"
+        "location": "(to be confirmed)",
+        "description": ""
+      },
+            {
+        "id": "e5",
+        "title": "Python Programming - Day 2",
+        "date": "2026-06-16",
+        "time": "09:00-12:00",
+        "location": "(to be confirmed)",
+        "description": ""
+      },
+            {
+        "id": "e5",
+        "title": "Python Programming - Day 3",
+        "date": "2026-06-17",
+        "time": "09:00-12:00",
+        "location": "(to be confirmed)",
+        "description": ""
+      },
+                  {
+        "id": "e5",
+        "title": "Python Programming - Day 4",
+        "date": "2026-06-18",
+        "time": "09:00-12:00",
+        "location": "(to be confirmed)",
+        "description": ""
       }
     ]
+  },
+  {
+    "id": "t4",
+    "title": "Scripting for Life Science Researchers",
+    "description": "This course is designed for researchers, who frequently handle large datasets or large numbers of files (images, sequence reads, mass spectra etc.) and who need a more efficient way of working with such data. The goal of the course is to empower students and researchers with backgrounds in biology or biomedicine to navigate, manage and perform operations on files and data and metadata in tabular text formats. The data may be microscopy images, FASTA sequences, gene ontology files, chromatograms, mass spectra or tables with data on genes or proteins. The course is not a general introduction to programming and will not deal with XML data, Web services or more advanced topics. For the Scripting course it is required to have followed the Linux course first. In case you haven’t done this yet, you can subscribe via the MGC website for next edition of the Practical Linux course.",
+    "organizer": "Medical Genetics Centre, LUMC",
+    "level": "Intermediate",
+    "audience": ["Anyone"],
+    "duration": "2 days",
+    "format": "In-person",
+    "tags": ["Scripting"],
+    "registrationLink": "https://www.medgencentre.com/MGC-courses/",
+    "sessions": [
+      {
+        "id": "e5",
+        "title": "Scripting for Life Science Researchers - Day 1",
+        "date": "2026-03-24",
+        "time": "",
+        "location": "(to be confirmed)",
+        "description": ""
+      },
+            {
+        "id": "e5",
+        "title": "Scripting for Life Science Researchers - Day 2",
+        "date": "2026-03-25",
+        "time": "",
+        "location": "(to be confirmed)",
+        "description": ""
+      }
+            
+    ]
   }
+  
 ]

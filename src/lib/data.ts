@@ -11,18 +11,18 @@ export type TrainingSession = {
 	time?: string;
 	location: string;
 	description?: string;
-	registrationLink?: string;
 };
 
 export type Training = {
 	id: string;
 	title: string;
 	description: string;
+	organizer: string;
 	level: DifficultyLevel;
 	audience: string[];
 	duration: string;
 	format: 'Online' | 'In-person' | 'Hybrid';
-	learningOutcomes: string[];
+	registrationLink?: string;
 	materialsLink?: string;
 	tags: string[];
 	sessions: TrainingSession[];
@@ -93,11 +93,12 @@ type RawTraining = {
 	id: string;
 	title: string;
 	description: string;
+	organizer: string;
 	level: DifficultyLevel;
 	audience: string[];
 	duration: string;
 	format: 'Online' | 'In-person' | 'Hybrid';
-	learningOutcomes: string[];
+	registrationLink?: string;
 	materialsLink?: string;
 	tags: string[];
 	sessions?: TrainingSession[];
@@ -122,7 +123,7 @@ const startTimeToIso = (date: string, time?: string) => {
 	const match = start?.match(/^(\d{1,2}):(\d{2})$/);
 
 	if (!match) {
-		return `${date}T16:00:00`;
+		return date;
 	}
 
 	const [_, hh, mm] = match;
@@ -163,11 +164,11 @@ export const trainings: Training[] = (rawTrainings as RawTraining[]).map((traini
 		!training.id ||
 		!training.title ||
 		!training.description ||
+		!training.organizer ||
 		!training.level ||
 		!training.duration ||
 		!training.format ||
 		!Array.isArray(training.audience) ||
-		!Array.isArray(training.learningOutcomes) ||
 		!Array.isArray(training.tags) ||
 		(training.sessions !== undefined && !Array.isArray(training.sessions))
 	) {
@@ -178,11 +179,12 @@ export const trainings: Training[] = (rawTrainings as RawTraining[]).map((traini
 		id: training.id,
 		title: training.title,
 		description: training.description,
+		organizer: training.organizer,
 		level: training.level,
 		audience: training.audience,
 		duration: training.duration,
 		format: training.format,
-		learningOutcomes: training.learningOutcomes,
+		registrationLink: training.registrationLink || undefined,
 		tags: training.tags,
 		materialsLink: training.materialsLink || undefined,
 		sessions: training.sessions || []
@@ -203,7 +205,7 @@ const trainingEvents: EventItem[] = trainings.flatMap((training) =>
 			time: session.time || undefined,
 			location: session.location,
 			description: session.description || training.description,
-			registrationLink: session.registrationLink || undefined,
+			registrationLink: training.registrationLink || undefined,
 			relatedTrainingId: training.id
 		};
 	})

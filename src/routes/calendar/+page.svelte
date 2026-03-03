@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { base } from '$app/paths';
 	import { events } from '$lib/data';
 
 	const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -47,14 +48,23 @@
 	);
 
 	const getEventsForDay = (date: Date) =>
-		events.filter((event) => {
-			const eDate = new Date(event.date);
-			return (
-				eDate.getDate() === date.getDate() &&
-				eDate.getMonth() === date.getMonth() &&
-				eDate.getFullYear() === date.getFullYear()
-			);
-		});
+		events.filter((event) => event.date.slice(0, 10) === formatDateKey(date));
+
+	const formatDateKey = (date: Date) => {
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
+		return `${year}-${month}-${day}`;
+	};
+
+	const withBase = (path: string) => `${base}${path}`;
+
+	const getEventHref = (event: (typeof events)[number]) => {
+		if (event.type === 'training' && event.relatedTrainingId) {
+			return withBase(`/training#${event.relatedTrainingId}`);
+		}
+		return event.slug ? withBase(`/cafe/${event.slug}`) : undefined;
+	};
 
 	const nextMonth = () => {
 		if (viewMonth === 11) {
@@ -114,10 +124,22 @@
 						</div>
 						<div class="events">
 							{#each getEventsForDay(cell.fullDate) as event (event.id)}
-								<div class={event.type === 'cafe' ? 'event cafe' : 'event training'}>
-									<div class="title">{event.title}</div>
-									<div class="time">{new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-								</div>
+								{@const href = getEventHref(event)}
+								{#if href}
+									<a class={event.type === 'cafe' ? 'event cafe' : 'event training'} href={href}>
+										<div class="title">{event.title}</div>
+										{#if event.time}
+											<div class="time">{event.time}</div>
+										{/if}
+									</a>
+								{:else}
+									<div class={event.type === 'cafe' ? 'event cafe' : 'event training'}>
+										<div class="title">{event.title}</div>
+										{#if event.time}
+											<div class="time">{event.time}</div>
+										{/if}
+									</div>
+								{/if}
 							{/each}
 						</div>
 					</div>
@@ -231,10 +253,14 @@
 		color: #334155;
 	}
 	.cell {
-		min-height: 7.3rem;
+		height: 8.8rem;
 		padding: 0.5rem;
 		border-bottom: 1px solid #f1f5f9;
 		border-right: 1px solid #f1f5f9;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		min-width: 0;
 	}
 	.cell[data-last-col='true'] {
 		border-right: 0;
@@ -268,13 +294,20 @@
 	.events {
 		display: grid;
 		gap: 0.3rem;
+		flex: 1;
+		min-height: 0;
+		overflow: auto;
+		padding-right: 0.1rem;
 	}
 	.event {
+		display: block;
 		padding: 0.25rem 0.4rem;
 		border-radius: 0.35rem;
 		border-left: 2px solid;
 		font-size: 0.66rem;
 		line-height: 1.25;
+		min-width: 0;
+		text-decoration: none;
 	}
 	.event.training {
 		background: #f0f9ff;
@@ -288,9 +321,10 @@
 	}
 	.title {
 		font-weight: 700;
-		white-space: nowrap;
+		white-space: normal;
 		overflow: hidden;
-		text-overflow: ellipsis;
+		text-overflow: clip;
+		word-break: break-word;
 	}
 	.time {
 		opacity: 0.8;
