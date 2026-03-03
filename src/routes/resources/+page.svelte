@@ -8,12 +8,18 @@
 		r.tags.includes('Infrastructure') || r.tags.includes('HPC')
 	);
 
+	const categorizedIds = new Set(
+		[...versionControl, ...fairOpenScience, ...languages, ...infrastructure].map((resource) => resource.id)
+	);
+	const otherResources = resources.filter((resource) => !categorizedIds.has(resource.id));
+
 	const groups: Array<{ title: string; items: Resource[] }> = [
 		{ title: 'Version Control & Collaboration', items: versionControl },
 		{ title: 'FAIR & Open Science', items: fairOpenScience },
 		{ title: 'Programming (Python & R)', items: languages },
-		{ title: 'Infrastructure & Tools', items: infrastructure }
-	];
+		{ title: 'Infrastructure & Tools', items: infrastructure },
+		{ title: 'Other Resources', items: otherResources }
+	].filter((group) => group.items.length > 0);
 </script>
 
 <div class="wrap">
@@ -33,9 +39,9 @@
 				<div class="cards">
 					{#each group.items as resource (resource.id)}
 						<article class="card">
-							<div class={resource.source === 'Internal (LUMC)' ? 'poster internal' : 'poster external'}>
+							<div class={resource.source === 'LUMC' ? 'poster internal' : 'poster external'}>
 								<div class="poster-meta">
-									<span>{resource.source === 'Internal (LUMC)' ? 'Internal' : 'External'}</span>
+									<span>{resource.source}</span>
 									<span>{resource.type}</span>
 								</div>
 								<h3>{resource.title}</h3>
@@ -48,7 +54,7 @@
 									{/each}
 								</div>
 								<div class="footer">
-									<span>{resource.source === 'Internal (LUMC)' ? 'LUMC Only' : 'Open Access'}</span>
+									<span>{resource.access}</span>
 									<a href={resource.url} target="_blank" rel="noopener noreferrer">Open</a>
 								</div>
 							</div>

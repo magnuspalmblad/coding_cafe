@@ -59,7 +59,8 @@ export type Resource = {
 	type: 'Tutorial' | 'Guide' | 'Tool' | 'Policy';
 	tags: string[];
 	url: string;
-	source: 'Internal (LUMC)' | 'External';
+	source: 'LUMC' | 'External';
+	access: 'Open Access' | 'LUMC Only';
 };
 
 export type TeamMember = {
@@ -111,7 +112,12 @@ type RawResource = {
 	type: 'Tutorial' | 'Guide' | 'Tool' | 'Policy';
 	tags: string[];
 	url: string;
-	source: 'Internal (LUMC)' | 'External';
+	source: 'Internal (LUMC)' | 'LUMC' | 'External';
+	access: 'Open Access' | 'LUMC Only';
+};
+
+const normalizeResourceSource = (source: RawResource['source']): Resource['source'] => {
+	return source === 'External' ? 'External' : 'LUMC';
 };
 
 const startTimeToIso = (date: string, time?: string) => {
@@ -220,6 +226,7 @@ export const resources: Resource[] = (rawResources as RawResource[]).map((resour
 		!resource.abstract ||
 		!resource.type ||
 		!resource.source ||
+		!resource.access ||
 		!resource.url ||
 		!Array.isArray(resource.tags)
 	) {
@@ -231,7 +238,8 @@ export const resources: Resource[] = (rawResources as RawResource[]).map((resour
 		title: resource.title,
 		abstract: resource.abstract,
 		type: resource.type,
-		source: resource.source,
+		source: normalizeResourceSource(resource.source),
+		access: resource.access,
 		tags: resource.tags,
 		url: resource.url
 	};
