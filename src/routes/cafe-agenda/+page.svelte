@@ -3,8 +3,6 @@
 	import { base } from '$app/paths';
 
 	const withBase = (path: string) => (path === '/' ? `${base}/` : `${base}${path}`);
-	const cafeLogoSrc = withBase('/images/Logo_transparent_bg.png');
-
 	const cafeEvents = events
 		.filter((event) => event.type === 'cafe')
 		.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -59,7 +57,6 @@
 			</div>
 
 			<div class="intro-panel">
-				<img class="cafe-logo" src={cafeLogoSrc} alt="LUMC Coding Cafe" />
 				<a class="back-link" href={withBase('/cafe')}>Back to Coding Cafe landing -></a>
 			</div>
 		</div>
@@ -252,14 +249,6 @@
 		display: grid;
 		gap: 1rem;
 		justify-items: start;
-	}
-
-	.cafe-logo {
-		display: block;
-		height: auto;
-		width: min(100%, 24rem);
-		max-width: calc(100% - 2rem);
-		filter: drop-shadow(0 18px 40px rgb(14 165 233 / 0.15));
 	}
 
 	.back-link {

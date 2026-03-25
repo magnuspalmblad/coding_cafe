@@ -11,6 +11,7 @@
 		{ name: 'Home', path: '/' },
 		{ name: 'Training', path: '/training' },
 		{ name: 'Coding Cafe', path: '/cafe' },
+		{ name: 'Coding Cafe Agenda', path: '/cafe-agenda' },
 		{ name: 'Resources', path: '/resources' },
 		{ name: 'Calendar', path: '/calendar' },
 		{ name: 'About', path: '/about' },
