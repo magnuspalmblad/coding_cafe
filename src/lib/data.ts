@@ -9,6 +9,8 @@ export type TrainingSession = {
 	title?: string;
 	date: string;
 	time?: string;
+	startTime?: string;
+	endTime?: string;
 	location: string;
 	description?: string;
 };
@@ -35,6 +37,8 @@ export type EventItem = {
 	subtitle?: string;
 	date: string;
 	time?: string;
+	startTime?: string;
+	endTime?: string;
 	location: string;
 	speaker?: string;
 	speakerLink?: string;
@@ -74,6 +78,8 @@ type RawCodingCafeEvent = {
 	subtitle?: string;
 	date: string;
 	time?: string;
+	startTime?: string;
+	endTime?: string;
 	location: string;
 	speaker?: string;
 	speaker_link?: string;
@@ -136,18 +142,41 @@ const startTimeToIso = (date: string, time?: string) => {
 	return `${date}T${hh.padStart(2, '0')}:${mm}:00`;
 };
 
+const parseTimeRange = (time?: string) => {
+	if (!time) {
+		return { startTime: undefined, endTime: undefined };
+	}
+
+	const [start, end] = time.split('-').map((part) => part?.trim() || undefined);
+	return {
+		startTime: start || undefined,
+		endTime: end || undefined
+	};
+};
+
+const formatTimeRange = (startTime?: string, endTime?: string) => {
+	if (startTime && endTime) return `${startTime}-${endTime}`;
+	return startTime || endTime || undefined;
+};
+
 const codingCafeEvents: EventItem[] = (rawCodingCafeEvents as RawCodingCafeEvent[]).map((event, index) => {
 	if (!event.title || !event.date || !event.location) {
 		throw new Error(`Invalid coding-cafe-events.json entry at index ${index}`);
 	}
+
+	const parsedRange = parseTimeRange(event.time);
+	const startTime = event.startTime || parsedRange.startTime;
+	const endTime = event.endTime || parsedRange.endTime;
 
 	return {
 		id: event.slug || `cafe-${event.date}-${index}`,
 		type: 'cafe',
 		title: event.title,
 		subtitle: event.subtitle || undefined,
-		date: startTimeToIso(event.date, event.time),
-		time: event.time || undefined,
+		date: startTimeToIso(event.date, startTime),
+		time: formatTimeRange(startTime, endTime),
+		startTime,
+		endTime,
 		location: event.location,
 		speaker: event.speaker || undefined,
 		speakerLink: event.speaker_link || undefined,
@@ -203,12 +232,18 @@ const trainingEvents: EventItem[] = trainings.flatMap((training) =>
 			throw new Error(`Invalid session in trainings.json for training ${training.id} at index ${index}`);
 		}
 
+		const parsedRange = parseTimeRange(session.time);
+		const startTime = session.startTime || parsedRange.startTime;
+		const endTime = session.endTime || parsedRange.endTime;
+
 		return {
 			id: session.id,
 			type: 'training',
 			title: session.title || training.title,
-			date: startTimeToIso(session.date, session.time),
-			time: session.time || undefined,
+			date: startTimeToIso(session.date, startTime),
+			time: formatTimeRange(startTime, endTime),
+			startTime,
+			endTime,
 			location: session.location,
 			description: session.description || training.description,
 			registrationLink: training.registrationLink || undefined,

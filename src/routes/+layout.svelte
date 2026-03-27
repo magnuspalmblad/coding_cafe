@@ -82,29 +82,28 @@
 	</main>
 
 	<footer class="footer">
-		<div class="footer-grid container">
-			<div class="footer-main">
-				<h3>LUMC Research Software</h3>
+		<div class="footer-shell container">
+			<a href={withBase('/')} class="footer-logo-card" aria-label="LUMC Research Software Training home">
+				<img src={logoSrc} alt="LUMC Research Software Training logo" />
+			</a>
+
+			<div class="footer-title-block">
+				<p class="footer-kicker">LUMC Research Software Training</p>
+			</div>
+
+			<div class="footer-description">
 				<p>
 					Empowering researchers with the skills and tools to build high-quality, reproducible, and
 					FAIR software for better science.
 				</p>
 			</div>
-			<div>
-				<h4>Quick Links</h4>
-				<ul>
-					<li><a href={withBase('/training')}>Training Catalogue</a></li>
-					<li><a href={withBase('/cafe')}>Coding Cafe</a></li>
-					<li><a href={withBase('/resources')}>Resources</a></li>
-				</ul>
+
+			<div class="footer-contact">
+				<p class="footer-contact-title">Özgün Balaban</p>
+				<div>
+					<a href="mailto:o.balaban@lumc.nl">o.balaban@lumc.nl</a>
+				</div>
 			</div>
-			<div>
-				<h4>Contact</h4>
-				<p><a href="mailto:o.balaban@lumc.nl">o.balaban@lumc.nl</a></p>
-			</div>
-		</div>
-		<div class="footer-bottom">
-			&copy; {new Date().getFullYear()} Leiden University Medical Center. All rights reserved.
 		</div>
 	</footer>
 </div>
@@ -200,15 +199,53 @@
 		border-radius: 0.4rem;
 	}
 
+	.nav a {
+		position: relative;
+		border-radius: 0;
+	}
+
+	.nav a::after {
+		content: '';
+		position: absolute;
+		left: 0.7rem;
+		right: 0.7rem;
+		bottom: 0.1rem;
+		height: 2px;
+		border-radius: 999px;
+		background: #0c4a6e;
+		transform: scaleX(0);
+		transform-origin: center;
+		transition: transform 0.2s ease;
+	}
+
 	.nav a:hover,
 	.mobile-nav a:hover {
-		background: #f1f5f9;
 		color: #0369a1;
 	}
 
-	.nav a.active,
+	.nav a:hover {
+		background: transparent;
+	}
+
+	.mobile-nav a:hover {
+		background: #f1f5f9;
+	}
+
 	.mobile-nav a.active {
 		background: #f0f9ff;
+		color: #0369a1;
+	}
+
+	.nav a.active {
+		background: transparent;
+		color: #0c4a6e;
+	}
+
+	.nav a.active::after {
+		transform: scaleX(1);
+	}
+
+	.mobile-nav a.active {
 		color: #0369a1;
 	}
 
@@ -236,36 +273,59 @@
 	.footer {
 		background: #0f172a;
 		color: #cbd5e1;
-		padding-top: 3rem;
+		padding-top: 1.2rem;
 		margin-top: 2rem;
+		border-top: 1px solid rgb(148 163 184 / 0.16);
 	}
 
-	.footer-grid {
-		display: grid;
-		grid-template-columns: 1fr;
-		gap: 2rem;
+	.footer-shell {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		align-items: flex-start;
+		padding-top: 0.8rem;
+		padding-bottom: 0.8rem;
 	}
 
-	.footer-main h3,
-	h4 {
-		margin: 0 0 0.85rem;
+	.footer-title-block,
+	.footer-description,
+	.footer-contact {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+	}
+
+	.footer-kicker {
+		margin: 0;
+		font-size: 0.8rem;
+		font-weight: 800;
+		text-transform: uppercase;
+		letter-spacing: 0.16em;
 		color: #fff;
 	}
 
-	.footer-main p,
-	.footer p {
+	.footer-description p,
+	.footer-contact {
 		margin: 0;
 		color: #cbd5e1;
-		line-height: 1.6;
-		max-width: 26rem;
+		line-height: 1.55;
+		font-size: 0.92rem;
 	}
 
-	.footer ul {
-		padding: 0;
-		margin: 0;
-		list-style: none;
-		display: grid;
-		gap: 0.45rem;
+	.footer-logo-card {
+		display: inline-flex;
+		width: fit-content;
+		max-width: max-content;
+		padding: 0.7rem 0.9rem;
+		border-radius: 1rem;
+		background: rgb(255 255 255 / 0.96);
+		box-shadow: 0 14px 30px -18px rgb(255 255 255 / 0.35);
+	}
+
+	.footer-logo-card img {
+		height: 2.3rem;
+		width: auto;
+		display: block;
 	}
 
 	.footer a {
@@ -277,13 +337,11 @@
 		color: #fff;
 	}
 
-	.footer-bottom {
-		margin-top: 3rem;
-		padding: 1.2rem 1rem;
-		border-top: 1px solid #334155;
-		text-align: center;
-		font-size: 0.78rem;
-		color: #94a3b8;
+	.footer-contact-title {
+		margin: 0 0 0.35rem;
+		font-size: 0.98rem;
+		font-weight: 700;
+		color: #fff;
 	}
 
 	@media (min-width: 768px) {
@@ -300,8 +358,10 @@
 			display: none;
 		}
 
-		.footer-grid {
-			grid-template-columns: 2fr 1fr 1fr;
+		.footer-shell {
+			flex-direction: row;
+			align-items: center;
+			gap: 1.5rem;
 		}
 	}
 </style>

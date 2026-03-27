@@ -2,16 +2,28 @@
 	import { events } from '$lib/data';
 	import { base } from '$app/paths';
 
+	type ViewMode = 'list' | 'grid';
+
 	const withBase = (path: string) => (path === '/' ? `${base}/` : `${base}${path}`);
+
 	const cafeEvents = events
 		.filter((event) => event.type === 'cafe')
 		.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
 	const now = new Date();
-	const upcomingEvents = cafeEvents.filter((event) => new Date(event.date) > now);
-	const pastEvents = cafeEvents.filter((event) => new Date(event.date) <= now).reverse();
+	const upcoming = cafeEvents.filter((event) => new Date(event.date) > now);
+	const past = cafeEvents.filter((event) => new Date(event.date) <= now).reverse();
+
+	let viewMode = $state<ViewMode>('list');
 
 	const formatDate = (date: string) =>
+		new Date(date).toLocaleDateString(undefined, {
+			month: 'long',
+			day: 'numeric',
+			year: 'numeric'
+		});
+
+	const formatShortDate = (date: string) =>
 		new Date(date).toLocaleDateString(undefined, {
 			month: 'short',
 			day: '2-digit',
@@ -25,160 +37,195 @@
 			minute: '2-digit'
 		});
 
-	const eventTagline = (tags?: string[]) => {
-		if (!tags || tags.length === 0) return 'Coding Cafe Session';
-		return tags[0].replace(/[-_]/g, ' ');
-	};
-
-	const tagList = (tags?: string[]) => (tags && tags.length > 0 ? tags : ['coding-cafe']);
-	const sessionPath = (slug?: string) => (slug ? withBase(`/cafe/${slug}`) : undefined);
-
-	const speakerInitials = (name?: string) => {
-		if (!name) return 'CC';
-		return name
-			.split(' ')
-			.filter(Boolean)
-			.slice(0, 2)
-			.map((part) => part[0]?.toUpperCase() ?? '')
-			.join('');
-	};
+	const agendaHref = (slug?: string, fallback?: string) =>
+		slug ? withBase(`/cafe/${slug}`) : fallback || withBase('/contact');
 </script>
 
-<div class="page">
-	<section class="intro">
-		<div class="container intro-grid">
-			<div class="intro-copy">
-				<div class="eyebrow">Coding Cafe Agenda</div>
-				<h1>Sessions, archive, and the next things worth joining.</h1>
-				<p>
-					The BeCoding-style card layout now lives here, restyled to match the lighter LUMC site
-					theme. Use this page as the practical overview for everything happening in the Coding Cafe.
-				</p>
+<section class="agenda-hero">
+	<div class="container hero-copy">
+		<p class="hero-eyebrow">Agenda</p>
+		<h1>Explore upcoming and past Coding Cafe sessions.</h1>
+		<p class="hero-body">
+			Upcoming sessions, past materials, and direct links to talks and exercises live here.
+		</p>
+	</div>
+</section>
+
+<section class="agenda-shell container">
+	<div class="agenda-stack">
+		<section class="agenda-section">
+			<div class="agenda-section-head">
+				<div>
+					<p class="section-eyebrow">Upcoming</p>
+					<h2>Next sessions</h2>
+				</div>
+
+				<div class="browser-card">
+					<div>
+						<p class="browser-title">Event browser</p>
+						<p class="browser-copy">
+							{upcoming.length} upcoming session{upcoming.length === 1 ? '' : 's'} and {past.length}
+							archived session{past.length === 1 ? '' : 's'}.
+						</p>
+					</div>
+
+					<div class="view-toggle" role="tablist" aria-label="Agenda view">
+						<button
+							type="button"
+							class:view-toggle__button--active={viewMode === 'list'}
+							class="view-toggle__button"
+							onclick={() => (viewMode = 'list')}
+							aria-pressed={viewMode === 'list'}
+						>
+							List
+						</button>
+						<button
+							type="button"
+							class:view-toggle__button--active={viewMode === 'grid'}
+							class="view-toggle__button"
+							onclick={() => (viewMode = 'grid')}
+							aria-pressed={viewMode === 'grid'}
+						>
+							Grid
+						</button>
+					</div>
+				</div>
 			</div>
 
-			<div class="intro-panel">
-				<a class="back-link" href={withBase('/cafe')}>Back to Coding Cafe landing -></a>
-			</div>
-		</div>
-	</section>
+			{#if upcoming.length}
+				<div class={viewMode === 'grid' ? 'event-grid' : 'event-list'}>
+					{#each upcoming as event (event.id)}
+						<a class:card-grid-view={viewMode === 'grid'} class="agenda-card" href={agendaHref(event.slug, event.registrationLink)}>
+							<div class="agenda-card__rail">
+								<span class="agenda-card__badge">{formatDate(event.date)}</span>
+								{#if event.time}
+									<p class="agenda-card__rail-note">{formatTime(event.date, event.time)}</p>
+								{/if}
+								{#if event.location}
+									<div class="agenda-card__rail-location-block">
+										<p class="agenda-card__rail-label">Location</p>
+										<p class="agenda-card__rail-location">{event.location}</p>
+									</div>
+								{/if}
+							</div>
 
-	<section class="section container">
-		<div class="section-head">
-			<div>
-				<div class="section-label">Live schedule</div>
-				<h2>Upcoming Sessions</h2>
-			</div>
-		</div>
-
-		{#if upcomingEvents.length > 0}
-			<div class="cards" class:single={upcomingEvents.length === 1}>
-				{#each upcomingEvents as event (event.id)}
-					<article class="event-card">
-						<div class="event-card-body">
-							<div class="top-row">
-								<span class="topic">{eventTagline(event.tags)}</span>
-								<div class="date-block">
-									<div>{formatDate(event.date)}</div>
-									<div>{formatTime(event.date, event.time)}</div>
+							<div class="agenda-card__content">
+								<div class="agenda-card__header">
+									<h3>{event.title}</h3>
+									{#if event.tags?.length}
+										<div class="agenda-card__tags">
+											{#each event.tags as tag}
+												<span>{tag}</span>
+											{/each}
+										</div>
+									{/if}
+									<p>{event.description}</p>
 								</div>
 							</div>
 
-							<h3>{event.title}</h3>
-							{#if event.subtitle}<p class="subtitle">{event.subtitle}</p>{/if}
-							<p class="description">{event.description}</p>
+							<div class="agenda-card__aside">
+								<div class="agenda-card__speaker">
+									<div class="agenda-card__avatar" aria-hidden="true">CC</div>
+									<div>
+										<p class="agenda-card__speaker-label">Speaker</p>
+										{#if event.speaker}
+											<p class="agenda-card__speaker-name">{event.speaker}</p>
+										{:else}
+											<p class="agenda-card__speaker-name">Coding Cafe</p>
+										{/if}
+									</div>
+								</div>
 
-							<div class="tag-row">
-								{#each tagList(event.tags).slice(0, 4) as tag}
-									<span>#{tag}</span>
-								{/each}
-							</div>
-						</div>
-
-						<div class="event-card-footer">
-							<div class="speaker">
-								<div class="avatar">{speakerInitials(event.speaker)}</div>
-								<div>
-									<div class="speaker-name">{event.speaker ?? 'Community Session'}</div>
-									<div class="speaker-role">Coding Cafe Speaker</div>
+								<div class="agenda-card__action">
+									<div class="agenda-card__action-copy">
+										<p class="agenda-card__action-label">Join</p>
+										<p class="agenda-card__action-title">Open session details</p>
+									</div>
+									<span class="agenda-card__action-icon" aria-hidden="true">
+										<svg viewBox="0 0 24 24">
+											<path d="M7 17L17 7M17 7H8M17 7V16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+										</svg>
+									</span>
 								</div>
 							</div>
-							<div class="key-info">
-								<div class="key-info-row"><span>Date</span> {formatDate(event.date)}</div>
-								<div class="key-info-row"><span>Time</span> {formatTime(event.date, event.time)}</div>
-								<div class="key-info-row"><span>Location</span> {event.location}</div>
+						</a>
+					{/each}
+				</div>
+			{:else}
+				<p class="agenda-empty">No upcoming sessions are published yet.</p>
+			{/if}
+		</section>
+
+		<section class="agenda-section">
+			<div class="agenda-section-head archive-head">
+				<div>
+					<p class="section-eyebrow archive-eyebrow">Archive</p>
+					<h2>Past sessions</h2>
+				</div>
+			</div>
+
+			{#if past.length}
+				<div class={viewMode === 'grid' ? 'event-grid' : 'event-list'}>
+					{#each past as event (event.id)}
+						<a class:card-grid-view={viewMode === 'grid'} class="agenda-card agenda-card--past" href={agendaHref(event.slug, withBase('/resources'))}>
+							<div class="agenda-card__rail">
+								<span class="agenda-card__badge archive-badge">{formatDate(event.date)}</span>
 							</div>
-							<a class="cta" href={sessionPath(event.slug) || event.registrationLink || withBase('/contact')}
-								>Session page -></a
-							>
-						</div>
-					</article>
-				{/each}
-			</div>
-		{:else}
-			<div class="empty">No upcoming sessions scheduled yet.</div>
-		{/if}
-	</section>
 
-	<section class="section container archive-section">
-		<div class="section-head">
-			<div>
-				<div class="section-label archive-label">Archive</div>
-				<h2>Past Sessions</h2>
-			</div>
-		</div>
-
-		{#if pastEvents.length > 0}
-			<div class="cards" class:single={pastEvents.length === 1}>
-				{#each pastEvents as event (event.id)}
-					<article class="event-card muted">
-						<div class="event-card-body">
-							<div class="top-row">
-								<span class="topic">{eventTagline(event.tags)}</span>
-								<div class="date-block">
-									<div>{formatDate(event.date)}</div>
-									<div>{formatTime(event.date, event.time)}</div>
+							<div class="agenda-card__content">
+								<div class="agenda-card__header">
+									<h3>{event.title}</h3>
+									{#if event.tags?.length}
+										<div class="agenda-card__tags">
+											{#each event.tags as tag}
+												<span>{tag}</span>
+											{/each}
+										</div>
+									{/if}
+									<p>{event.description}</p>
 								</div>
 							</div>
 
-							<h3>{event.title}</h3>
-							{#if event.subtitle}<p class="subtitle">{event.subtitle}</p>{/if}
-							<p class="description">{event.description}</p>
+							<div class="agenda-card__aside">
+								<div class="agenda-card__speaker">
+									<div class="agenda-card__avatar agenda-card__avatar--muted" aria-hidden="true">CC</div>
+									<div>
+										<p class="agenda-card__speaker-label">Speaker</p>
+										{#if event.speaker}
+											<p class="agenda-card__speaker-name">{event.speaker}</p>
+										{:else}
+											<p class="agenda-card__speaker-name">Coding Cafe</p>
+										{/if}
+									</div>
+								</div>
 
-							<div class="tag-row">
-								{#each tagList(event.tags).slice(0, 4) as tag}
-									<span>#{tag}</span>
-								{/each}
-							</div>
-						</div>
-
-						<div class="event-card-footer">
-							<div class="speaker">
-								<div class="avatar">{speakerInitials(event.speaker)}</div>
-								<div>
-									<div class="speaker-name">{event.speaker ?? 'Community Session'}</div>
-									<div class="speaker-role archive-role">Past Session</div>
+								<div class="agenda-card__action agenda-card__action--archive">
+									<div class="agenda-card__action-copy">
+										<p class="agenda-card__action-label">Session page</p>
+										<p class="agenda-card__action-title">Open materials and details</p>
+									</div>
+									<span class="agenda-card__action-icon" aria-hidden="true">
+										<svg viewBox="0 0 24 24">
+											<path d="M7 17L17 7M17 7H8M17 7V16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+										</svg>
+									</span>
 								</div>
 							</div>
-							<a class="cta secondary" href={sessionPath(event.slug) || withBase('/resources')}
-								>View materials -></a
-							>
-						</div>
-					</article>
-				{/each}
-			</div>
-		{:else}
-			<div class="empty">No past sessions recorded.</div>
-		{/if}
-	</section>
-</div>
+						</a>
+					{/each}
+				</div>
+			{:else}
+				<p class="agenda-empty">Past sessions will appear here once they are archived.</p>
+			{/if}
+		</section>
+	</div>
+</section>
 
 <style>
-	.page {
-		min-height: 100%;
+	.agenda-hero {
 		background:
-			radial-gradient(circle at top right, rgb(14 165 233 / 0.16), transparent 24rem),
-			linear-gradient(180deg, #f8fafc 0%, #f0f9ff 46%, #e2e8f0 100%);
-		padding-bottom: 4rem;
+			radial-gradient(circle at top left, rgb(14 165 233 / 0.12), transparent 22rem),
+			linear-gradient(180deg, #f8fafc 0%, #ffffff 55%, #eff6ff 100%);
 	}
 
 	.container {
@@ -187,319 +234,455 @@
 		padding: 0 1rem;
 	}
 
-	.intro {
-		padding-top: 3.2rem;
-		padding-bottom: 1.6rem;
+	.hero-copy {
+		padding-top: 3.5rem;
+		padding-bottom: 2.5rem;
 	}
 
-	.intro-grid {
-		display: grid;
-		gap: 1.5rem;
-		align-items: end;
-	}
-
-	.eyebrow,
-	.section-label {
-		display: inline-flex;
-		padding: 0.42rem 0.8rem;
-		border-radius: 999px;
-		background: #e0f2fe;
-		color: #075985;
-		font-size: 0.72rem;
+	.hero-eyebrow,
+	.section-eyebrow {
+		margin: 0;
+		font-size: 0.78rem;
 		font-weight: 800;
-		letter-spacing: 0.08em;
+		letter-spacing: 0.28em;
 		text-transform: uppercase;
+		color: #0284c7;
 	}
 
-	.archive-label {
-		background: #e2e8f0;
-		color: #475569;
+	.archive-eyebrow {
+		color: #64748b;
 	}
 
 	h1 {
-		margin: 1rem 0 1rem;
-		font-size: clamp(2.2rem, 6vw, 3.7rem);
-		line-height: 0.98;
+		margin: 1rem 0 0;
+		max-width: 14ch;
+		font-size: clamp(2.6rem, 6vw, 4.8rem);
+		font-weight: 900;
+		line-height: 0.95;
+		letter-spacing: -0.05em;
+		color: #0f172a;
+	}
+
+	.hero-body {
+		margin: 1.1rem 0 0;
+		max-width: 42rem;
+		font-size: 1.05rem;
+		line-height: 1.8;
+		color: #475569;
+	}
+
+	.agenda-shell {
+		padding-top: 1.5rem;
+		padding-bottom: 4rem;
+	}
+
+	.agenda-stack {
+		display: grid;
+		gap: 3rem;
+	}
+
+	.agenda-section {
+		display: grid;
+		gap: 1.5rem;
+	}
+
+	.agenda-section-head {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		padding-bottom: 1rem;
+		border-bottom: 1px solid #e2e8f0;
+	}
+
+	.archive-head {
+		padding-bottom: 0.9rem;
+	}
+
+	h2 {
+		margin: 0.5rem 0 0;
+		font-size: clamp(1.8rem, 4vw, 2.3rem);
+		font-weight: 800;
+		letter-spacing: -0.03em;
+		color: #0f172a;
+	}
+
+	.browser-card {
+		display: grid;
+		gap: 1rem;
+		padding: 1rem 1.1rem;
+		border: 1px solid #e2e8f0;
+		border-radius: 1.4rem;
+		background: rgb(255 255 255 / 0.86);
+		box-shadow: 0 24px 60px -32px rgb(15 23 42 / 0.18);
+	}
+
+	.browser-title {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 800;
+		letter-spacing: -0.02em;
+		color: #0f172a;
+	}
+
+	.browser-copy {
+		margin: 0.35rem 0 0;
+		font-size: 0.9rem;
+		line-height: 1.6;
+		color: #64748b;
+	}
+
+	.view-toggle {
+		display: inline-flex;
+		width: fit-content;
+		border-radius: 1rem;
+		background: #f1f5f9;
+		padding: 0.25rem;
+	}
+
+	.view-toggle__button {
+		border: 0;
+		background: transparent;
+		padding: 0.65rem 1rem;
+		border-radius: 0.8rem;
+		font-size: 0.82rem;
+		font-weight: 700;
+		color: #64748b;
+		cursor: pointer;
+	}
+
+	.view-toggle__button--active {
+		background: #fff;
+		color: #0369a1;
+		box-shadow: 0 1px 2px rgb(15 23 42 / 0.08);
+	}
+
+	.event-list,
+	.event-grid {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.agenda-card {
+		display: grid;
+		gap: 1.25rem;
+		padding: 1.4rem;
+		border: 1px solid #e2e8f0;
+		border-radius: 1.75rem;
+		background: rgb(255 255 255 / 0.9);
+		box-shadow: 0 24px 60px -36px rgb(15 23 42 / 0.16);
+		text-decoration: none;
+		transition:
+			transform 0.18s ease,
+			box-shadow 0.18s ease,
+			border-color 0.18s ease,
+			background-color 0.18s ease;
+	}
+
+	.agenda-card:hover {
+		transform: translateY(-4px);
+		border-color: #bae6fd;
+		box-shadow: 0 28px 70px -36px rgb(14 165 233 / 0.2);
+	}
+
+	.agenda-card--past {
+		background: rgb(255 255 255 / 0.8);
+	}
+
+	.agenda-card__rail {
+		display: flex;
+		flex-direction: column;
+		gap: 0.7rem;
+	}
+
+	.agenda-card__badge {
+		display: inline-flex;
+		width: fit-content;
+		padding: 0;
+		border-radius: 0;
+		background: transparent;
+		color: #0f172a;
+		font-size: 1.5rem;
+		font-weight: 700;
+		line-height: 1.12;
+		letter-spacing: -0.04em;
+	}
+
+	.archive-badge {
+		color: #0f172a;
+	}
+
+	.agenda-card__rail-note {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 700;
+		line-height: 1.12;
 		letter-spacing: -0.04em;
 		color: #0f172a;
 	}
 
-	h2 {
-		margin: 0.8rem 0 0;
-		font-size: clamp(1.55rem, 4vw, 2.2rem);
+	.agenda-card__rail-location {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 700;
+		line-height: 1.12;
+		letter-spacing: -0.04em;
 		color: #0f172a;
+	}
+
+	.agenda-card__rail-location-block {
+		display: grid;
+		gap: 0.25rem;
+	}
+
+	.agenda-card__rail-label {
+		margin: 0;
+		font-size: 0.72rem;
+		font-weight: 800;
+		line-height: 1.2;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: #64748b;
+	}
+
+	.agenda-card__content {
+		display: grid;
+		gap: 0.9rem;
+	}
+
+	.agenda-card__header {
+		display: grid;
+		gap: 0.85rem;
+	}
+
+	.agenda-card__tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.45rem;
+	}
+
+	.agenda-card__tags span {
+		display: inline-flex;
+		padding: 0.35rem 0.7rem;
+		border-radius: 999px;
+		background: #f1f5f9;
+		font-size: 0.65rem;
+		font-weight: 800;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: #475569;
 	}
 
 	h3 {
 		margin: 0;
-		color: #0f172a;
-		font-size: 1.32rem;
+		font-size: 1.5rem;
+		font-weight: 800;
 		line-height: 1.15;
+		color: #0f172a;
+		transition: color 0.18s ease;
 	}
 
-	.intro-copy p {
-		max-width: 44rem;
+	.agenda-card:hover h3 {
+		color: #075985;
+	}
+
+	.agenda-card p {
 		margin: 0;
-		font-size: 1.04rem;
+		font-size: 0.96rem;
 		line-height: 1.7;
 		color: #475569;
 	}
 
-	.intro-panel {
+	.agenda-card__aside {
 		display: grid;
 		gap: 1rem;
-		justify-items: start;
+		padding-top: 0.2rem;
 	}
 
-	.back-link {
-		text-decoration: none;
-		font-weight: 700;
-		color: #0369a1;
-	}
-
-	.section {
-		padding-top: 1.5rem;
-	}
-
-	.archive-section {
-		padding-top: 2rem;
-	}
-
-	.section-head {
+	.agenda-card__speaker {
 		display: flex;
-		justify-content: space-between;
 		align-items: center;
-		gap: 1rem;
-		margin-bottom: 1rem;
-	}
-
-	.cards {
-		display: grid;
-		grid-template-columns: repeat(1, minmax(0, 1fr));
-		gap: 1rem;
-	}
-
-	.cards.single {
-		grid-template-columns: minmax(18rem, 24rem);
-		justify-content: start;
-	}
-
-	.event-card {
-		aspect-ratio: 1 / 1;
-		display: flex;
-		flex-direction: column;
-		background: linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.98));
-		border: 1px solid rgb(148 163 184 / 0.22);
-		border-radius: 1.35rem;
-		overflow: hidden;
-		box-shadow: 0 20px 50px rgb(15 23 42 / 0.08);
-	}
-
-	.event-card.muted {
-		background: linear-gradient(180deg, rgb(255 255 255 / 0.82), rgb(241 245 249 / 0.9));
-	}
-
-	.event-card-body {
-		padding: 1rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.7rem;
-		flex: 1;
-		min-height: 0;
-	}
-
-	.top-row {
-		display: flex;
-		justify-content: space-between;
-		gap: 0.6rem;
-	}
-
-	.topic {
-		padding: 0.3rem 0.58rem;
-		border-radius: 999px;
-		border: 1px solid rgb(14 165 233 / 0.24);
-		background: rgb(14 165 233 / 0.09);
-		color: #0369a1;
-		font-size: 0.64rem;
-		font-weight: 800;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		height: fit-content;
-	}
-
-	.date-block {
-		text-align: right;
-		font-size: 0.7rem;
-		line-height: 1.3;
-		color: #64748b;
-	}
-
-	.subtitle {
-		margin: 0;
-		color: #0284c7;
-		font-size: 0.9rem;
-		font-weight: 800;
-		text-transform: uppercase;
-	}
-
-	.description {
-		margin: 0;
-		color: #475569;
-		font-size: 0.88rem;
-		line-height: 1.5;
-		display: -webkit-box;
-		line-clamp: 4;
-		-webkit-line-clamp: 4;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-
-	.tag-row {
-		display: flex;
-		gap: 0.4rem;
-		flex-wrap: wrap;
-		margin-top: auto;
-	}
-
-	.tag-row span {
-		padding: 0.24rem 0.5rem;
-		border-radius: 0.45rem;
-		border: 1px solid #dbeafe;
+		gap: 0.85rem;
+		padding: 0.85rem 0.95rem;
+		border: 1px solid #e2e8f0;
+		border-radius: 1.2rem;
 		background: #f8fafc;
-		color: #64748b;
-		font-size: 0.65rem;
-		font-weight: 700;
+		transition:
+			border-color 0.18s ease,
+			background-color 0.18s ease,
+			transform 0.18s ease;
 	}
 
-	.event-card-footer {
-		padding: 0.8rem 1rem 1rem;
-		border-top: 1px solid #e2e8f0;
-		background: rgb(248 250 252 / 0.84);
-		display: grid;
-		gap: 0.6rem;
+	.agenda-card:hover .agenda-card__speaker {
+		border-color: #cbd5e1;
+		background: #f8fcff;
+		transform: translateY(-1px);
 	}
 
-	.speaker {
-		display: flex;
-		align-items: center;
-		gap: 0.58rem;
-	}
-
-	.avatar {
-		width: 2rem;
-		height: 2rem;
-		border-radius: 0.6rem;
+	.agenda-card__avatar {
 		display: grid;
 		place-items: center;
-		font-size: 0.72rem;
+		width: 2.9rem;
+		height: 2.9rem;
+		border-radius: 999px;
+		background: linear-gradient(135deg, #0369a1, #0ea5e9);
+		color: white;
+		font-size: 0.78rem;
 		font-weight: 800;
-		background: #e0f2fe;
-		color: #075985;
+		letter-spacing: 0.08em;
 	}
 
-	.speaker-name {
-		font-size: 0.84rem;
+	.agenda-card__avatar--muted {
+		background: linear-gradient(135deg, #64748b, #94a3b8);
+	}
+
+	.agenda-card__speaker-name {
+		margin: 0;
+		font-size: 0.94rem;
 		font-weight: 700;
+		line-height: 1.35;
 		color: #0f172a;
 	}
 
-	.speaker-role {
-		font-size: 0.69rem;
-		font-weight: 700;
+	.agenda-card__speaker-label {
+		margin: 0 0 0.2rem;
+		font-size: 0.68rem;
+		font-weight: 800;
+		line-height: 1.2;
+		letter-spacing: 0.16em;
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		color: #0284c7;
-	}
-
-	.archive-role {
 		color: #64748b;
 	}
 
-	.key-info {
-		display: grid;
-		gap: 0.3rem;
-		padding: 0.55rem 0.65rem;
-		border-radius: 0.8rem;
-		border: 1px solid #dbeafe;
-		background: #f0f9ff;
-	}
-
-	.key-info-row {
-		color: #0f172a;
-		font-size: 0.87rem;
-		font-weight: 700;
-		line-height: 1.35;
-	}
-
-	.key-info-row span {
-		color: #0284c7;
-		font-size: 0.7rem;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		font-weight: 800;
-		margin-right: 0.35rem;
-	}
-
-	.cta {
+	.agenda-card__action {
 		display: flex;
-		justify-content: center;
 		align-items: center;
-		text-decoration: none;
-		padding: 0.72rem 0.8rem;
-		border-radius: 0.8rem;
-		background: #0369a1;
-		color: #fff;
-		font-size: 0.88rem;
-		font-weight: 900;
-		letter-spacing: 0.02em;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.95rem 1rem;
+		border: 1px solid #bae6fd;
+		border-radius: 1.2rem;
+		background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%);
+		transition:
+			border-color 0.18s ease,
+			box-shadow 0.18s ease,
+			background-color 0.18s ease;
 	}
 
-	.cta:hover {
-		background: #075985;
+	.agenda-card:hover .agenda-card__action {
+		border-color: #7dd3fc;
+		box-shadow: 0 16px 36px -28px rgb(14 165 233 / 0.45);
 	}
 
-	.cta.secondary {
-		background: #fff;
+	.agenda-card__action--archive {
+		border-color: #cbd5e1;
+		background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+	}
+
+	.agenda-card__action-copy {
+		min-width: 0;
+	}
+
+	.agenda-card__action-label {
+		margin: 0;
+		font-size: 0.68rem;
+		font-weight: 800;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: #0369a1;
+	}
+
+	.agenda-card__action--archive .agenda-card__action-label {
+		color: #475569;
+	}
+
+	.agenda-card__action-title {
+		margin: 0.25rem 0 0;
+		font-size: 0.92rem;
+		font-weight: 700;
+		line-height: 1.4;
 		color: #0f172a;
-		border: 1px solid #cbd5e1;
 	}
 
-	.cta.secondary:hover {
-		background: #f8fafc;
+	.agenda-card__action-icon {
+		display: grid;
+		place-items: center;
+		width: 2.5rem;
+		height: 2.5rem;
+		flex-shrink: 0;
+		border-radius: 999px;
+		background: white;
+		color: #475569;
+		box-shadow: 0 8px 20px -18px rgb(15 23 42 / 0.5);
+		transition:
+			transform 0.18s ease,
+			background-color 0.18s ease,
+			color 0.18s ease;
 	}
 
-	.empty {
+	.agenda-card__action-icon svg {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	.agenda-card:hover .agenda-card__action-icon {
+		transform: translateX(3px);
+		background: #0369a1;
+		color: white;
+	}
+
+	.card-grid-view {
+		height: 100%;
+		align-content: start;
+	}
+
+	.agenda-empty {
+		margin: 0;
 		padding: 2rem;
-		border-radius: 1rem;
-		border: 1px dashed #94a3b8;
-		background: rgb(248 250 252 / 0.95);
-		color: #334155;
+		border: 1px dashed #cbd5e1;
+		border-radius: 1.5rem;
+		background: #f8fafc;
+		font-size: 0.95rem;
+		color: #64748b;
 	}
 
-	@media (min-width: 700px) {
-		.cards {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
-
-		.cards.single {
-			grid-template-columns: minmax(20rem, 24rem);
-		}
-	}
-
-	@media (min-width: 900px) {
-		.intro-grid {
-			grid-template-columns: minmax(0, 1.25fr) minmax(18rem, 0.75fr);
-		}
-	}
-
-	@media (min-width: 1100px) {
+	@media (min-width: 768px) {
 		.container {
 			padding: 0 1.5rem;
 		}
 
-		.cards {
+		.agenda-section-head {
+			flex-direction: row;
+			align-items: end;
+			justify-content: space-between;
+		}
+	}
+
+	@media (min-width: 900px) {
+		.browser-card {
+			grid-template-columns: minmax(0, 1fr) auto;
+			align-items: center;
+			gap: 1.5rem;
+		}
+	}
+
+	@media (min-width: 960px) {
+		.event-list .agenda-card:not(.card-grid-view) {
+			grid-template-columns: minmax(10rem, 1.1fr) minmax(0, 2.4fr) minmax(13rem, 1fr);
+			align-items: start;
+		}
+
+		.event-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.card-grid-view {
+			grid-template-rows: auto 1fr auto;
+		}
+	}
+
+	@media (min-width: 1280px) {
+		.event-grid {
 			grid-template-columns: repeat(3, minmax(0, 1fr));
-			gap: 1.2rem;
 		}
 	}
 </style>

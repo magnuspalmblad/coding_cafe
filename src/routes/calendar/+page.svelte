@@ -1,54 +1,42 @@
 <script lang="ts">
 	import { base } from '$app/paths';
-	import { events } from '$lib/data';
+	import { events, type EventItem } from '$lib/data';
 
 	const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-	type CellType = 'prev' | 'current' | 'next';
-
-	const now = new Date();
-	let viewYear = $state(now.getFullYear());
-	let viewMonth = $state(now.getMonth());
-
-	const getDaysInMonth = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
-	const getFirstDayOfMonth = (y: number, m: number) => {
-		const day = new Date(y, m, 1).getDay();
-		return day === 0 ? 6 : day - 1;
+	type CalendarEvent = EventItem & {
+		href?: string;
 	};
 
-	type CalendarCell = { day: number; type: CellType; fullDate: Date };
+	type CalendarCell = {
+		day: number;
+		type: 'prev' | 'current' | 'next';
+		fullDate: Date;
+	};
 
-	const calendarCells = $derived.by(() => {
-		const y = viewYear;
-		const m = viewMonth;
-		const daysInMonth = getDaysInMonth(y, m);
-		const startingDayIndex = getFirstDayOfMonth(y, m);
-		const daysInPrevMonth = getDaysInMonth(y, m - 1);
-		const cells: CalendarCell[] = [];
+	const now = new Date();
+	let activeDate = $state(new Date(now.getFullYear(), now.getMonth(), now.getDate()));
+	let viewMode = $state<'month' | 'week' | 'day'>('month');
+	let activeEvent = $state<CalendarEvent | null>(null);
 
-		for (let i = 0; i < startingDayIndex; i += 1) {
-			const day = daysInPrevMonth - startingDayIndex + i + 1;
-			cells.push({ day, type: 'prev', fullDate: new Date(y, m - 1, day) });
-		}
+	const withBase = (path: string) => (path === '/' ? `${base}/` : `${base}${path}`);
 
-		for (let i = 1; i <= daysInMonth; i += 1) {
-			cells.push({ day: i, type: 'current', fullDate: new Date(y, m, i) });
-		}
+	const calendarEvents: CalendarEvent[] = events.map((event) => ({
+		...event,
+		href:
+			event.type === 'training' && event.relatedTrainingId
+				? withBase(`/training#${event.relatedTrainingId}`)
+				: event.slug
+					? withBase(`/cafe/${event.slug}`)
+					: event.registrationLink || undefined
+	}));
 
-		const remainingCells = 42 - cells.length;
-		for (let i = 1; i <= remainingCells; i += 1) {
-			cells.push({ day: i, type: 'next', fullDate: new Date(y, m + 1, i) });
-		}
+	const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
 
-		return cells;
-	});
-
-	const monthLabel = $derived(
-		new Date(viewYear, viewMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-	);
-
-	const getEventsForDay = (date: Date) =>
-		events.filter((event) => event.date.slice(0, 10) === formatDateKey(date));
+	const getFirstDayOfMonth = (year: number, month: number) => {
+		const day = new Date(year, month, 1).getDay();
+		return day === 0 ? 6 : day - 1;
+	};
 
 	const formatDateKey = (date: Date) => {
 		const year = date.getFullYear();
@@ -57,286 +45,1004 @@
 		return `${year}-${month}-${day}`;
 	};
 
-	const withBase = (path: string) => `${base}${path}`;
-
-	const getEventHref = (event: (typeof events)[number]) => {
-		if (event.type === 'training' && event.relatedTrainingId) {
-			return withBase(`/training#${event.relatedTrainingId}`);
-		}
-		return event.slug ? withBase(`/cafe/${event.slug}`) : undefined;
+	const addDays = (date: Date, amount: number) => {
+		const next = new Date(date);
+		next.setDate(next.getDate() + amount);
+		return next;
 	};
 
-	const nextMonth = () => {
-		if (viewMonth === 11) {
-			viewMonth = 0;
-			viewYear += 1;
-			return;
-		}
-		viewMonth += 1;
+	const getStartOfWeek = (date: Date) => {
+		const day = date.getDay();
+		const diff = day === 0 ? -6 : 1 - day;
+		return addDays(date, diff);
 	};
 
-	const prevMonth = () => {
-		if (viewMonth === 0) {
-			viewMonth = 11;
-			viewYear -= 1;
+	const sameDay = (left: Date, right: Date) => formatDateKey(left) === formatDateKey(right);
+
+	const getEventsForDay = (date: Date) =>
+		calendarEvents
+			.filter((event) => event.date.slice(0, 10) === formatDateKey(date))
+			.sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''));
+
+	const parseHourMinute = (value?: string) => {
+		if (!value) return null;
+		const match = value.match(/(\d{1,2}):(\d{2})/);
+		if (!match) return null;
+		return Number(match[1]) + Number(match[2]) / 60;
+	};
+
+	const getStartHour = (event: CalendarEvent) => {
+		if (event.startTime) return parseHourMinute(event.startTime);
+		if (event.time) return parseHourMinute(event.time.split('-')[0]?.trim());
+		return parseHourMinute(event.date.split('T')[1]?.slice(0, 5));
+	};
+
+	const getEndHour = (event: CalendarEvent) => {
+		if (event.endTime) return parseHourMinute(event.endTime);
+		if (!event.time) return null;
+		return parseHourMinute(event.time.split('-')[1]?.trim());
+	};
+
+	const timelineStartHour = 8;
+	const timelineEndHour = 20;
+	const timelineStepMinutes = 30;
+	const timelineSlotHeight = 2.25;
+	const timelineSlots = Array.from(
+		{ length: (timelineEndHour - timelineStartHour) * 2 + 1 },
+		(_, index) => timelineStartHour + index * 0.5
+	);
+
+	const formatHourLabel = (value: number) => {
+		const hours = Math.floor(value);
+		const minutes = value % 1 === 0 ? '00' : '30';
+		return `${String(hours).padStart(2, '0')}:${minutes}`;
+	};
+
+	const getTimedEvents = (date: Date) => {
+		const datedEvents = getEventsForDay(date);
+		return datedEvents.map((event, index) => {
+			const start = getStartHour(event);
+			const end = getEndHour(event);
+			const duration = start !== null && end !== null && end > start ? end - start : 0.5;
+			const top =
+				start !== null
+					? (start - timelineStartHour) * (60 / timelineStepMinutes) * timelineSlotHeight
+					: index * 4.75 + 0.5;
+			const height = Math.max(duration * (60 / timelineStepMinutes) * timelineSlotHeight - 0.3, 2);
+
+			return {
+				...event,
+				top,
+				height,
+				untimed: start === null
+			};
+		});
+	};
+
+	const buildCalendarCells = (year: number, month: number): CalendarCell[] => {
+		const daysInMonth = getDaysInMonth(year, month);
+		const startingDayIndex = getFirstDayOfMonth(year, month);
+		const daysInPrevMonth = getDaysInMonth(year, month - 1);
+		const cells: CalendarCell[] = [];
+
+		for (let i = 0; i < startingDayIndex; i += 1) {
+			const day = daysInPrevMonth - startingDayIndex + i + 1;
+			cells.push({ day, type: 'prev', fullDate: new Date(year, month - 1, day) });
+		}
+
+		for (let i = 1; i <= daysInMonth; i += 1) {
+			cells.push({ day: i, type: 'current', fullDate: new Date(year, month, i) });
+		}
+
+		const remainingCells = 42 - cells.length;
+		for (let i = 1; i <= remainingCells; i += 1) {
+			cells.push({ day: i, type: 'next', fullDate: new Date(year, month + 1, i) });
+		}
+
+		return cells;
+	};
+
+	const calendarCells = $derived(buildCalendarCells(activeDate.getFullYear(), activeDate.getMonth()));
+	const weekDays = $derived(Array.from({ length: 7 }, (_, index) => addDays(getStartOfWeek(activeDate), index)));
+	const dayEvents = $derived(getEventsForDay(activeDate));
+	const periodLabel = $derived(
+		viewMode === 'month'
+			? new Date(activeDate.getFullYear(), activeDate.getMonth(), 1).toLocaleDateString('en-US', {
+					month: 'long',
+					year: 'numeric'
+				})
+			: viewMode === 'week'
+				? `${weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+				: activeDate.toLocaleDateString('en-US', {
+						weekday: 'long',
+						month: 'long',
+						day: 'numeric',
+						year: 'numeric'
+					})
+	);
+
+	const nextPeriod = () => {
+		activeEvent = null;
+		if (viewMode === 'month') {
+			activeDate = new Date(activeDate.getFullYear(), activeDate.getMonth() + 1, 1);
 			return;
 		}
-		viewMonth -= 1;
+		if (viewMode === 'week') {
+			activeDate = addDays(activeDate, 7);
+			return;
+		}
+		activeDate = addDays(activeDate, 1);
+	};
+
+	const prevPeriod = () => {
+		activeEvent = null;
+		if (viewMode === 'month') {
+			activeDate = new Date(activeDate.getFullYear(), activeDate.getMonth() - 1, 1);
+			return;
+		}
+		if (viewMode === 'week') {
+			activeDate = addDays(activeDate, -7);
+			return;
+		}
+		activeDate = addDays(activeDate, -1);
 	};
 
 	const goToToday = () => {
-		viewYear = now.getFullYear();
-		viewMonth = now.getMonth();
+		activeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+		activeEvent = null;
 	};
 
-	const isToday = (date: Date) => new Date().toDateString() === date.toDateString();
+	const isToday = (date: Date) => sameDay(new Date(), date);
+	const openEvent = (event: CalendarEvent) => (activeEvent = event);
+	const closeEvent = () => (activeEvent = null);
+	const setViewMode = (mode: 'month' | 'week' | 'day') => {
+		viewMode = mode;
+		activeEvent = null;
+	};
 </script>
 
-<div class="wrap">
-	<div class="container">
-		<div class="head">
-			<h1>Training Calendar</h1>
-			<div class="controls">
-				<button type="button" onclick={prevMonth}>Prev</button>
-				<div class="month">{monthLabel}</div>
-				<button type="button" onclick={nextMonth}>Next</button>
-			</div>
-			<button type="button" class="today" onclick={goToToday}>Today</button>
-		</div>
+<svelte:head>
+	<title>Calendar | LUMC Research Software Training</title>
+</svelte:head>
 
-		<div class="legend">
-			<span><i class="dot training"></i>Training</span>
-			<span><i class="dot cafe"></i>Coding Cafe</span>
-		</div>
-
-		<div class="calendar">
-			<div class="weekdays">
-				{#each DAYS_OF_WEEK as day}
-					<div>{day}</div>
-				{/each}
+<section class="calendar-page">
+	<div class="calendar-shell">
+		<section class="calendar-head">
+			<div class="calendar-head__copy">
+				<p class="calendar-head__eyebrow">Calendar</p>
+				<h1>Calendar View</h1>
+				<p>
+					A shared calendar view of Coding Cafe sessions and training activities across month, week,
+					and day layouts.
+				</p>
 			</div>
 
-			<div class="grid">
-				{#each calendarCells as cell, idx}
-					<div class={cell.type === 'current' ? 'cell current' : 'cell muted'} data-last-col={idx % 7 === 6}>
-						<div class="day">
-							<span class:today={isToday(cell.fullDate)}>{cell.day}</span>
-						</div>
-						<div class="events">
-							{#each getEventsForDay(cell.fullDate) as event (event.id)}
-								{@const href = getEventHref(event)}
-								{#if href}
-									<a class={event.type === 'cafe' ? 'event cafe' : 'event training'} href={href}>
-										<div class="title">{event.title}</div>
-										{#if event.time}
-											<div class="time">{event.time}</div>
-										{/if}
-									</a>
-								{:else}
-									<div class={event.type === 'cafe' ? 'event cafe' : 'event training'}>
-										<div class="title">{event.title}</div>
-										{#if event.time}
-											<div class="time">{event.time}</div>
-										{/if}
+			<div class="calendar-head__controls">
+				<div class="calendar-view-toggle" role="tablist" aria-label="Calendar view">
+					<button
+						type="button"
+						class:calendar-view-toggle__button--active={viewMode === 'month'}
+						class="calendar-view-toggle__button"
+						onclick={() => setViewMode('month')}
+					>
+						Month
+					</button>
+					<button
+						type="button"
+						class:calendar-view-toggle__button--active={viewMode === 'week'}
+						class="calendar-view-toggle__button"
+						onclick={() => setViewMode('week')}
+					>
+						Week
+					</button>
+					<button
+						type="button"
+						class:calendar-view-toggle__button--active={viewMode === 'day'}
+						class="calendar-view-toggle__button"
+						onclick={() => setViewMode('day')}
+					>
+						Day
+					</button>
+				</div>
+
+				<div class="calendar-nav">
+					<button type="button" onclick={prevPeriod}>Prev</button>
+					<div class="calendar-nav__label">{periodLabel}</div>
+					<button type="button" onclick={nextPeriod}>Next</button>
+				</div>
+
+				<button type="button" class="calendar-today" onclick={goToToday}>Today</button>
+			</div>
+		</section>
+
+		<div class="calendar-legend">
+			<span><i class="calendar-dot calendar-dot--training"></i>Training</span>
+			<span><i class="calendar-dot calendar-dot--cafe"></i>Coding Cafe</span>
+		</div>
+
+		<section class="calendar-board">
+			{#if viewMode === 'month'}
+				<div class="calendar-weekdays">
+					{#each DAYS_OF_WEEK as day}
+						<div>{day}</div>
+					{/each}
+				</div>
+
+				<div class="calendar-grid">
+					{#each calendarCells as cell, idx}
+						<div
+							class={`calendar-cell ${cell.type === 'current' ? 'calendar-cell--current' : 'calendar-cell--muted'}`}
+							data-last-col={idx % 7 === 6}
+						>
+							<div class="calendar-day">
+								<span class:calendar-day__today={isToday(cell.fullDate)}>{cell.day}</span>
+							</div>
+
+							<div class="calendar-events">
+								{#each getEventsForDay(cell.fullDate) as event (event.id)}
+									<div class={`calendar-event ${event.type === 'cafe' ? 'calendar-event--cafe' : 'calendar-event--training'}`}>
+										<button
+											type="button"
+											aria-haspopup="dialog"
+											class="calendar-event__button"
+											onclick={() => openEvent(event)}
+										>
+											<div class="calendar-event__header">
+												<div class="calendar-event__title">{event.title}</div>
+												<span class="calendar-event__expand">+</span>
+											</div>
+											{#if event.time}
+												<div class="calendar-event__time">{event.time}</div>
+											{/if}
+										</button>
 									</div>
-								{/if}
+								{/each}
+							</div>
+						</div>
+					{/each}
+				</div>
+			{:else if viewMode === 'week'}
+				<div class="calendar-week-timeline">
+					<div class="calendar-week-timeline__hours">
+						<div class="calendar-week-timeline__corner"></div>
+						{#each timelineSlots as hour}
+							<div class="calendar-week-timeline__hour">{formatHourLabel(hour)}</div>
+						{/each}
+					</div>
+
+					<div class="calendar-week-timeline__days">
+						{#each weekDays as day}
+							<div class="calendar-week-timeline__day">
+								<div class="calendar-week-timeline__dayhead">
+									<p>{day.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+									<span class:calendar-day__today={isToday(day)}>
+										{day.toLocaleDateString('en-US', { day: 'numeric' })}
+									</span>
+								</div>
+
+								<div class="calendar-week-timeline__lane">
+									{#each timelineSlots as _hour}
+										<div class="calendar-week-timeline__slot"></div>
+									{/each}
+
+									{#if getTimedEvents(day).length}
+										{#each getTimedEvents(day) as event (event.id)}
+											<div
+												class={`calendar-event calendar-event--timeline ${event.type === 'cafe' ? 'calendar-event--cafe' : 'calendar-event--training'} ${event.untimed ? 'calendar-event--untimed' : ''}`}
+												style={`top: ${event.top}rem; ${event.untimed ? '' : `height: ${event.height}rem;`}`}
+											>
+												<button
+													type="button"
+													aria-haspopup="dialog"
+													class="calendar-event__button"
+													onclick={() => openEvent(event)}
+												>
+													<div class="calendar-event__header">
+														<div class="calendar-event__title">{event.title}</div>
+														<span class="calendar-event__expand">+</span>
+													</div>
+													{#if event.time}
+														<div class="calendar-event__time">{event.time}</div>
+													{/if}
+												</button>
+											</div>
+										{/each}
+									{:else}
+										<p class="calendar-empty-slot calendar-empty-slot--timeline">No events</p>
+									{/if}
+								</div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{:else}
+				<div class="calendar-day-view">
+					<div class="calendar-day-view__header">
+						<p>{activeDate.toLocaleDateString('en-US', { weekday: 'long' })}</p>
+						<h2>{activeDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</h2>
+					</div>
+
+					<div class="calendar-day-timeline">
+						<div class="calendar-day-timeline__hours">
+							{#each timelineSlots as hour}
+								<div class="calendar-week-timeline__hour">{formatHourLabel(hour)}</div>
 							{/each}
 						</div>
+
+						<div class="calendar-day-timeline__lane">
+							{#each timelineSlots as _hour}
+								<div class="calendar-week-timeline__slot"></div>
+							{/each}
+
+							{#if dayEvents.length}
+								{#each getTimedEvents(activeDate) as event (event.id)}
+									<div
+										class={`calendar-event calendar-event--timeline calendar-event--day ${event.type === 'cafe' ? 'calendar-event--cafe' : 'calendar-event--training'} ${event.untimed ? 'calendar-event--untimed' : ''}`}
+										style={`top: ${event.top}rem; ${event.untimed ? '' : `height: ${event.height}rem;`}`}
+									>
+										<button
+											type="button"
+											aria-haspopup="dialog"
+											class="calendar-event__button"
+											onclick={() => openEvent(event)}
+										>
+											<div class="calendar-event__header">
+												<div class="calendar-event__title">{event.title}</div>
+												<span class="calendar-event__expand">+</span>
+											</div>
+											{#if event.time}
+												<div class="calendar-event__time">{event.time}</div>
+											{/if}
+											{#if event.location}
+												<div class="calendar-event__time">{event.location}</div>
+											{/if}
+										</button>
+									</div>
+								{/each}
+							{:else}
+								<p class="calendar-empty-slot calendar-empty-slot--timeline">
+									No events scheduled for this day.
+								</p>
+							{/if}
+						</div>
 					</div>
-				{/each}
+				</div>
+			{/if}
+		</section>
+	</div>
+</section>
+
+{#if activeEvent}
+	<div class="calendar-modal-backdrop" role="presentation" onclick={closeEvent}>
+		<div
+			class={`calendar-modal ${activeEvent.type === 'cafe' ? 'calendar-modal--cafe' : 'calendar-modal--training'}`}
+			role="dialog"
+			aria-modal="true"
+			aria-label={activeEvent.title}
+			onclick={(event) => event.stopPropagation()}
+		>
+			<div class="calendar-modal__top">
+				<div>
+					<p class="calendar-modal__eyebrow">
+						{activeEvent.type === 'cafe' ? 'Coding Cafe' : 'Training'}
+					</p>
+					<h2>{activeEvent.title}</h2>
+				</div>
+				<button type="button" class="calendar-modal__close" aria-label="Close" onclick={closeEvent}>
+					×
+				</button>
 			</div>
+
+			<div class="calendar-modal__meta">
+				<p><strong>Date:</strong> {new Date(activeEvent.date).toLocaleDateString()}</p>
+				{#if activeEvent.time}
+					<p><strong>Time:</strong> {activeEvent.time}</p>
+				{/if}
+				{#if activeEvent.location}
+					<p><strong>Location:</strong> {activeEvent.location}</p>
+				{/if}
+				{#if activeEvent.speaker}
+					<p><strong>Speaker:</strong> {activeEvent.speaker}</p>
+				{/if}
+			</div>
+
+			{#if activeEvent.description}
+				<p class="calendar-modal__body">{activeEvent.description}</p>
+			{/if}
+
+			{#if activeEvent.href}
+				<a href={activeEvent.href} class="calendar-modal__link">Open details</a>
+			{/if}
 		</div>
 	</div>
-</div>
+{/if}
 
 <style>
-	.wrap {
+	.wrap,
+	.calendar-page {
 		min-height: 100%;
 		background: #f8fafc;
-		padding: 3rem 0;
 	}
-	.container {
-		max-width: 80rem;
+
+	.calendar-shell {
+		width: min(100% - 2rem, 84rem);
 		margin: 0 auto;
-		padding: 0 1rem;
+		padding: 1.5rem 0 4rem;
 	}
-	.head {
+
+	.calendar-head {
 		display: grid;
-		gap: 1rem;
-		margin-bottom: 1rem;
+		gap: 1.25rem;
+		align-items: end;
+		padding-bottom: 1.25rem;
+		border-bottom: 1px solid #e2e8f0;
 	}
-	h1 {
+
+	.calendar-head__eyebrow {
+		margin: 0 0 0.65rem;
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.28em;
+		text-transform: uppercase;
+		color: #0284c7;
+	}
+
+	.calendar-head h1 {
 		margin: 0;
-		font-size: 2rem;
+		max-width: 14ch;
+		font-size: clamp(2.25rem, 4.8vw, 4rem);
+		font-weight: 900;
+		line-height: 0.98;
+		letter-spacing: -0.05em;
 		color: #0f172a;
 	}
-	.controls {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.6rem;
-		background: #fff;
-		border: 1px solid #e2e8f0;
-		border-radius: 0.45rem;
-		padding: 0.25rem;
-		width: fit-content;
+
+	.calendar-head p:last-child {
+		margin: 1rem 0 0;
+		max-width: 42rem;
+		font-size: 1rem;
+		line-height: 1.75;
+		color: #475569;
 	}
-	.controls button,
-	.today {
+
+	.calendar-head__controls {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+	}
+
+	.calendar-view-toggle,
+	.calendar-nav {
+		display: inline-flex;
+		gap: 0.3rem;
+		border: 1px solid #e2e8f0;
+		border-radius: 1rem;
+		background: rgb(255 255 255 / 0.88);
+		padding: 0.3rem;
+	}
+
+	.calendar-nav {
+		display: grid;
+		grid-template-columns: auto minmax(12rem, auto) auto;
+		align-items: center;
+	}
+
+	.calendar-view-toggle__button,
+	.calendar-nav button,
+	.calendar-today {
 		border: 0;
 		background: transparent;
-		padding: 0.45rem 0.65rem;
-		font-weight: 600;
-		color: #334155;
-		border-radius: 0.35rem;
+		padding: 0.65rem 0.85rem;
+		border-radius: 0.8rem;
+		font-size: 0.78rem;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: #475569;
+		cursor: pointer;
+		font-family: inherit;
+		line-height: 1;
 	}
-	.controls button:hover,
-	.today:hover {
+
+	.calendar-view-toggle__button--active {
+		background: #0f172a;
+		color: white;
+	}
+
+	.calendar-nav button:hover,
+	.calendar-today:hover {
 		background: #f1f5f9;
 	}
-	.month {
-		min-width: 10rem;
-		text-align: center;
-		font-weight: 700;
-		color: #1e293b;
-	}
-	.today {
-		border: 1px solid #cbd5e1;
-		background: #fff;
-		width: fit-content;
-	}
-	.legend {
+
+	.calendar-nav__label {
 		display: flex;
-		gap: 1rem;
-		font-size: 0.85rem;
-		color: #475569;
-		margin-bottom: 1rem;
+		align-items: center;
+		justify-content: center;
+		min-width: 12rem;
+		padding: 0 0.75rem;
+		height: 100%;
+		text-align: center;
+		font-size: 0.82rem;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: #0f172a;
+		line-height: 1;
 	}
-	.legend span {
+
+	.calendar-today {
+		border: 1px solid #e2e8f0;
+		background: rgb(255 255 255 / 0.88);
+	}
+
+	.calendar-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 1rem;
+		margin: 1rem 0;
+		font-size: 0.84rem;
+		font-weight: 700;
+		color: #475569;
+	}
+
+	.calendar-legend span {
 		display: inline-flex;
 		align-items: center;
-		gap: 0.3rem;
+		gap: 0.4rem;
 	}
-	.dot {
-		width: 0.65rem;
-		height: 0.65rem;
-		border-radius: 999px;
+
+	.calendar-dot {
 		display: inline-block;
+		width: 0.7rem;
+		height: 0.7rem;
+		border-radius: 999px;
 	}
-	.dot.training {
+
+	.calendar-dot--training {
 		background: #0ea5e9;
 	}
-	.dot.cafe {
+
+	.calendar-dot--cafe {
 		background: #22c55e;
 	}
-	.calendar {
-		background: #fff;
-		border: 1px solid #e2e8f0;
-		border-radius: 0.65rem;
+
+	.calendar-board {
 		overflow: hidden;
+		border: 1px solid #e2e8f0;
+		border-radius: 1.6rem;
+		background: rgb(255 255 255 / 0.86);
+		box-shadow: 0 28px 70px -46px rgb(15 23 42 / 0.25);
 	}
-	.weekdays,
-	.grid {
+
+	.calendar-weekdays,
+	.calendar-grid {
 		display: grid;
 		grid-template-columns: repeat(7, minmax(0, 1fr));
 	}
-	.weekdays {
-		background: #f8fafc;
+
+	.calendar-weekdays {
 		border-bottom: 1px solid #e2e8f0;
+		background: #f8fafc;
 	}
-	.weekdays div {
-		padding: 0.65rem;
+
+	.calendar-weekdays div {
+		padding: 0.8rem;
 		text-align: center;
-		font-size: 0.74rem;
-		font-weight: 700;
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: #334155;
+		color: #475569;
 	}
-	.cell {
-		height: 8.8rem;
-		padding: 0.5rem;
-		border-bottom: 1px solid #f1f5f9;
-		border-right: 1px solid #f1f5f9;
+
+	.calendar-cell {
 		display: flex;
 		flex-direction: column;
-		overflow: hidden;
 		min-width: 0;
+		height: 9.75rem;
+		padding: 0.55rem;
+		border-right: 1px solid #f1f5f9;
+		border-bottom: 1px solid #f1f5f9;
 	}
-	.cell[data-last-col='true'] {
+
+	.calendar-cell[data-last-col='true'] {
 		border-right: 0;
 	}
-	.cell.muted {
-		background: #f8fafc;
-		color: #94a3b8;
+
+	.calendar-cell--muted {
+		background: #fafafa;
 	}
-	.day {
-		margin-bottom: 0.35rem;
+
+	.calendar-day {
 		display: flex;
 		align-items: center;
 		min-height: 1.9rem;
+		margin-bottom: 0.35rem;
 	}
-	.day span {
+
+	.calendar-day span {
 		display: grid;
 		place-items: center;
-		width: 1.9rem;
-		height: 1.9rem;
+		width: 1.95rem;
+		height: 1.95rem;
 		border-radius: 999px;
-		font-size: 0.76rem;
-		font-weight: 600;
-		line-height: 1;
-		letter-spacing: 0;
-		flex-shrink: 0;
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: #334155;
 	}
-	.day span.today {
+
+	.calendar-day__today {
 		background: #0369a1;
-		color: #fff;
+		color: white !important;
 	}
-	.events {
+
+	.calendar-events {
 		display: grid;
-		gap: 0.3rem;
+		gap: 0.35rem;
 		flex: 1;
-		min-height: 0;
 		overflow: auto;
 		padding-right: 0.1rem;
 	}
-	.event {
+
+	.calendar-event {
 		display: block;
-		padding: 0.25rem 0.4rem;
-		border-radius: 0.35rem;
-		border-left: 2px solid;
-		font-size: 0.66rem;
-		line-height: 1.25;
-		min-width: 0;
-		text-decoration: none;
+		padding: 0.35rem 0.45rem;
+		border-left: 3px solid;
+		border-radius: 0.55rem;
+		transition:
+			transform 180ms ease,
+			box-shadow 180ms ease,
+			background-color 180ms ease;
 	}
-	.event.training {
-		background: #f0f9ff;
-		color: #0369a1;
+
+	.calendar-event:hover {
+		transform: translateX(2px) translateY(-1px);
+		box-shadow: 0 10px 20px -16px rgb(15 23 42 / 0.28);
+	}
+
+	.calendar-event--training {
 		border-left-color: #0ea5e9;
+		background: #f0f9ff;
+		color: #075985;
 	}
-	.event.cafe {
-		background: #f0fdf4;
-		color: #15803d;
+
+	.calendar-event--cafe {
 		border-left-color: #22c55e;
+		background: #f0fdf4;
+		color: #166534;
 	}
-	.title {
-		font-weight: 700;
-		white-space: normal;
-		overflow: hidden;
-		text-overflow: clip;
+
+	.calendar-event__header {
+		display: flex;
+		align-items: start;
+		justify-content: space-between;
+		gap: 0.35rem;
+	}
+
+	.calendar-event__button {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-start;
+		border: 0;
+		background: transparent;
+		padding: 0;
+		text-align: left;
+		color: inherit;
+		cursor: pointer;
+	}
+
+	.calendar-event__title {
+		font-size: 0.68rem;
+		font-weight: 800;
+		line-height: 1.3;
 		word-break: break-word;
 	}
-	.time {
-		opacity: 0.8;
-		margin-top: 0.1rem;
+
+	.calendar-event__expand {
+		flex: none;
+		font-size: 0.9rem;
+		font-weight: 700;
+		line-height: 1;
+		opacity: 0.7;
 	}
-	@media (min-width: 768px) {
-		.container {
-			padding: 0 1.5rem;
+
+	.calendar-event__time {
+		margin-top: 0.12rem;
+		font-size: 0.62rem;
+		line-height: 1.25;
+		opacity: 0.85;
+	}
+
+	.calendar-week-timeline {
+		display: grid;
+		grid-template-columns: 4.5rem minmax(0, 1fr);
+	}
+
+	.calendar-week-timeline__hours {
+		border-right: 1px solid #e2e8f0;
+		background: #f8fafc;
+	}
+
+	.calendar-week-timeline__corner {
+		height: 3.5rem;
+		border-bottom: 1px solid #f1f5f9;
+	}
+
+	.calendar-week-timeline__hour {
+		height: 2.25rem;
+		padding: 0.35rem 0.65rem 0 0;
+		border-bottom: 1px solid #f1f5f9;
+		text-align: right;
+		font-size: 0.68rem;
+		font-weight: 700;
+		color: #64748b;
+	}
+
+	.calendar-week-timeline__days {
+		display: grid;
+		grid-template-columns: repeat(7, minmax(0, 1fr));
+	}
+
+	.calendar-week-timeline__day {
+		border-right: 1px solid #f1f5f9;
+	}
+
+	.calendar-week-timeline__day:last-child {
+		border-right: 0;
+	}
+
+	.calendar-week-timeline__dayhead {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		height: 3.5rem;
+		padding: 0.75rem;
+		border-bottom: 1px solid #f1f5f9;
+		background: rgb(255 255 255 / 0.65);
+	}
+
+	.calendar-week-timeline__dayhead p {
+		margin: 0;
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: #64748b;
+	}
+
+	.calendar-week-timeline__dayhead span {
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		border-radius: 9999px;
+		font-size: 0.8rem;
+		font-weight: 800;
+		color: #0f172a;
+	}
+
+	.calendar-week-timeline__lane {
+		position: relative;
+		height: 58.5rem;
+	}
+
+	.calendar-week-timeline__slot {
+		height: 2.25rem;
+		border-bottom: 1px solid #f1f5f9;
+	}
+
+	.calendar-day-view {
+		padding: 1rem;
+	}
+
+	.calendar-day-timeline {
+		display: grid;
+		grid-template-columns: 4.5rem minmax(0, 1fr);
+		margin-top: 0.9rem;
+		border-top: 1px solid #f1f5f9;
+	}
+
+	.calendar-day-timeline__hours {
+		border-right: 1px solid #e2e8f0;
+		background: #f8fafc;
+	}
+
+	.calendar-day-timeline__lane {
+		position: relative;
+		height: 58.5rem;
+	}
+
+	.calendar-day-view__header {
+		padding-bottom: 0.9rem;
+		border-bottom: 1px solid #f1f5f9;
+	}
+
+	.calendar-day-view__header p {
+		margin: 0;
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: #64748b;
+	}
+
+	.calendar-day-view__header h2 {
+		margin: 0.4rem 0 0;
+		font-size: 1.8rem;
+		font-weight: 800;
+		letter-spacing: -0.03em;
+		color: #0f172a;
+	}
+
+	.calendar-event--day {
+		padding: 0.65rem 0.75rem;
+	}
+
+	.calendar-event--timeline {
+		position: absolute;
+		left: 0.4rem;
+		right: 0.4rem;
+		z-index: 2;
+		min-height: 2rem;
+		pointer-events: auto;
+	}
+
+	.calendar-event--untimed {
+		right: 1rem;
+	}
+
+	.calendar-empty-slot {
+		margin: 0;
+		padding: 0.75rem;
+		border: 1px dashed #cbd5e1;
+		border-radius: 0.9rem;
+		font-size: 0.8rem;
+		color: #64748b;
+		background: rgb(248 250 252 / 0.7);
+	}
+
+	.calendar-empty-slot--timeline {
+		position: absolute;
+		left: 0.4rem;
+		right: 0.4rem;
+		top: 0.5rem;
+	}
+
+	.calendar-modal-backdrop {
+		position: fixed;
+		inset: 0;
+		z-index: 60;
+		display: grid;
+		place-items: center;
+		padding: 1rem;
+		background: rgb(15 23 42 / 0.32);
+		backdrop-filter: blur(4px);
+	}
+
+	.calendar-modal {
+		width: min(100%, 28rem);
+		border: 1px solid rgb(226 232 240 / 0.95);
+		border-radius: 1.4rem;
+		background: rgb(255 255 255 / 0.98);
+		padding: 1.1rem;
+		box-shadow: 0 32px 70px -36px rgb(15 23 42 / 0.45);
+		animation: calendar-modal-in 180ms ease;
+	}
+
+	.calendar-modal--training {
+		border-top: 4px solid #0ea5e9;
+	}
+
+	.calendar-modal--cafe {
+		border-top: 4px solid #22c55e;
+	}
+
+	.calendar-modal__top {
+		display: flex;
+		align-items: start;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.calendar-modal__eyebrow {
+		margin: 0 0 0.35rem;
+		font-size: 0.68rem;
+		font-weight: 800;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: #64748b;
+	}
+
+	.calendar-modal h2 {
+		margin: 0;
+		font-size: 1.25rem;
+		font-weight: 800;
+		line-height: 1.2;
+		letter-spacing: -0.03em;
+		color: #0f172a;
+	}
+
+	.calendar-modal__close {
+		border: 0;
+		background: #f1f5f9;
+		width: 2rem;
+		height: 2rem;
+		border-radius: 9999px;
+		font-size: 1.1rem;
+		line-height: 1;
+		color: #334155;
+		cursor: pointer;
+	}
+
+	.calendar-modal__meta {
+		display: grid;
+		gap: 0.4rem;
+		margin-top: 1rem;
+	}
+
+	.calendar-modal__meta p,
+	.calendar-modal__body {
+		margin: 0;
+		font-size: 0.9rem;
+		line-height: 1.65;
+		color: #475569;
+	}
+
+	.calendar-modal__body {
+		margin-top: 0.9rem;
+		white-space: pre-line;
+	}
+
+	.calendar-modal__link {
+		display: inline-flex;
+		margin-top: 1rem;
+		align-items: center;
+		justify-content: center;
+		border-radius: 0.9rem;
+		background: #0f172a;
+		padding: 0.75rem 0.95rem;
+		font-size: 0.7rem;
+		font-weight: 800;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		text-decoration: none;
+		color: white;
+	}
+
+	@keyframes calendar-modal-in {
+		from {
+			opacity: 0;
+			transform: translateY(8px) scale(0.98);
 		}
-		.head {
-			grid-template-columns: 1fr auto auto;
-			align-items: center;
+		to {
+			opacity: 1;
+			transform: translateY(0) scale(1);
+		}
+	}
+
+	@media (min-width: 900px) {
+		.calendar-head {
+			grid-template-columns: minmax(0, 1fr) auto;
+		}
+	}
+
+	@media (max-width: 720px) {
+		.calendar-shell {
+			width: min(100% - 1rem, 84rem);
+			padding-top: 1rem;
+		}
+
+		.calendar-board {
+			overflow-x: auto;
+		}
+
+		.calendar-weekdays,
+		.calendar-grid,
+		.calendar-week-timeline {
+			min-width: 48rem;
 		}
 	}
 </style>

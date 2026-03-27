@@ -296,8 +296,8 @@
 	}
 
 	.story-nav button {
-		width: 0.75rem;
-		height: 0.75rem;
+		width: 0.42rem;
+		height: 1.5rem;
 		border-radius: 999px;
 		border: 0;
 		background: rgb(100 116 139 / 0.25);
@@ -318,8 +318,8 @@
 
 	.story-nav button.active {
 		background: var(--blue-600);
-		transform: scale(1.15);
-		box-shadow: 0 0 0 0.35rem rgb(14 165 233 / 0.14);
+		transform: scaleY(1.08);
+		box-shadow: 0 0 0 0.28rem rgb(14 165 233 / 0.12);
 	}
 
 	.story {
